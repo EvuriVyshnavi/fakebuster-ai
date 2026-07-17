@@ -1,0 +1,7 @@
+flask
+torch
+open_clip_torch
+pandas
+Pillow
+numpy
+opencv-python-headless

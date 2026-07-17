@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>FakeBuster AI - Adaptive</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Inter,sans-serif}
+:root{
+  --bg:#f8fafc; --card:#ffffff; --card2:#f1f5f9; --border:#e2e8f0; --text:#0f172a; --text2:#64748b; --input:#ffffff; --upload-bg:#f8fafc;
+}
+@media(prefers-color-scheme:dark){
+  :root{ --bg:#0a0f1f; --card:#162032; --card2:#0f172a; --border:#233047; --text:#f1f5f9; --text2:#94a3b8; --input:#0f172a; --upload-bg:#0f172a; }
+}
+body{background:var(--bg); color:var(--text); min-height:100vh; padding:16px; transition:0.3s}
+.header{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px 28px; display:flex; justify-content:space-between; align-items:center; margin-bottom:16px}
+.main{display:grid; grid-template-columns:1fr 1fr; gap:16px; height:calc(100vh - 100px)}
+.card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:28px; height:100%; overflow-y:auto}
+.upload-area{border:2px dashed var(--border); border-radius:16px; padding:60px 30px; text-align:center; cursor:pointer; background:var(--upload-bg); margin-bottom:16px; transition:0.2s}
+.upload-area:hover{border-color:#60a5fa}
+.upload-area img{width:100%; max-height:300px; object-fit:contain; border-radius:12px; display:none}
+input{width:100%; padding:18px; border:1px solid var(--border); background:var(--input); color:var(--text); border-radius:12px; margin-top:12px; font-size:15px}
+button{width:100%; background:var(--text); color:var(--bg); border:none; padding:18px; border-radius:12px; font-weight:800; cursor:pointer; margin-top:20px; font-size:16px}
+button:hover{opacity:0.9}
+.result-box{margin-top:20px; padding:20px; border-radius:12px; display:none; border:1px solid}
+.result-box.fake{background:#fef2f2; border-color:#fecaca; color:#991b1b}
+.result-box.real{background:#f0fdf4; border-color:#bbf7d0; color:#14532d}
+.heatmaps{display:none; grid-template-columns:1fr 1fr; gap:16px; margin-top:20px}
+.heatmaps img{width:100%; border-radius:12px; height:240px; object-fit:cover; background:var(--card2); border:1px solid var(--border)}
+@media(max-width:900px){.main{grid-template-columns:1fr; height:auto}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="display:flex; align-items:center; gap:14px">
+    <div style="width:44px; height:44px; background:var(--text); color:var(--bg); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px">🛡️</div>
+    <div><div style="font-weight:800; font-size:20px">FakeBuster AI</div><div style="font-size:13px; color:var(--text2)">Adaptive Light/Dark • Enterprise System</div></div>
+  </div>
+  <div style="background:#22c55e; color:white; padding:8px 16px; border-radius:20px; font-size:12px; font-weight:800">● LIVE</div>
+</div>
+
+<div class="main">
+  <div class="card">
+    <h2 style="margin-bottom:20px; font-size:18px">📤 Upload News Content</h2>
+    <div class="upload-area" id="dropArea">
+      <img id="preview">
+      <div id="uploadText"><div style="font-size:32px; margin-bottom:10px">📸</div><div style="font-size:16px; font-weight:600">Drop Image Here</div><div style="font-size:13px; color:var(--text2); margin-top:6px">or Click to Browse</div></div>
+    </div>
+    <input type="file" id="fileInput" hidden accept="image/*">
+    <label style="font-size:13px; font-weight:600; color:var(--text2)">News Headline</label>
+    <input type="text" id="headline" placeholder="e.g., NASA confirms water found on Mars...">
+    <button id="btn" onclick="analyze()">🔍 Analyze Content</button>
+    <div id="status" style="margin-top:12px; font-size:12px; color:var(--text2); text-align:center"></div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-bottom:20px; font-size:18px">📊 Detection Result</h2>
+    <div id="empty" style="padding:80px 40px; text-align:center; color:var(--text2); border:1px dashed var(--border); border-radius:16px">
+      <div style="font-size:36px; margin-bottom:12px">🤖</div>
+      <div>Upload image and headline<br>Result will appear here</div>
+    </div>
+    <div id="resultBox" class="result-box">
+      <div style="display:flex; justify-content:space-between; font-weight:800; font-size:16px"><span id="pred"></span><span id="conf"></span></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px">
+        <div style="background:white; padding:14px; border-radius:10px; text-align:center; color:black"><small>REAL SCORE</small><div id="realP" style="font-weight:800; font-size:22px"></div></div>
+        <div style="background:white; padding:14px; border-radius:10px; text-align:center; color:black"><small>FAKE SCORE</small><div id="fakeP" style="font-weight:800; font-size:22px"></div></div>
+      </div>
+    </div>
+    <div id="heatmaps" class="heatmaps">
+      <div><small style="color:var(--text2)">🔥 Attention Heatmap</small><img id="hm" style="margin-top:8px"></div>
+      <div><small style="color:var(--text2)">👁️ Focus Overlay</small><img id="ov" style="margin-top:8px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const fileInput=document.getElementById('fileInput');const dropArea=document.getElementById('dropArea');const preview=document.getElementById('preview');const uploadText=document.getElementById('uploadText');let selectedFile=null;
+dropArea.onclick=()=>fileInput.click();
+fileInput.onchange=e=>handleFile(e.target.files[0]);
+dropArea.ondragover=e=>{e.preventDefault()};
+dropArea.ondrop=e=>{e.preventDefault();handleFile(e.dataTransfer.files[0])};
+function handleFile(file){if(!file)return;selectedFile=file;const r=new FileReader();r.onload=ev=>{preview.src=ev.target.result;preview.style.display='block';uploadText.style.display='none'};r.readAsDataURL(file);}
+async function analyze(){
+ const h=document.getElementById('headline').value.trim();const btn=document.getElementById('btn');const st=document.getElementById('status');
+ if(!selectedFile){alert('Upload image');return}if(!h){alert('Enter headline');return}
+ btn.disabled=true;btn.innerText='⏳ Analyzing...';st.innerText='Analyzing...';
+ const fd=new FormData();fd.append('image',selectedFile);fd.append('headline',h);
+ try{const res=await fetch('/analyze',{method:'POST',body:fd});const data=await res.json();
+ document.getElementById('empty').style.display='none';document.getElementById('resultBox').style.display='block';document.getElementById('heatmaps').style.display='grid';
+ const isFake=data.pred==='FAKE';document.getElementById('resultBox').className='result-box '+(isFake?'fake':'real');
+ document.getElementById('pred').innerText=isFake?'🚨 FAKE NEWS':'✅ REAL NEWS';document.getElementById('conf').innerText=data.conf+'%';
+ document.getElementById('realP').innerText=data.real_p+'%';document.getElementById('fakeP').innerText=data.fake_p+'%';
+ document.getElementById('hm').src='data:image/png;base64,'+data.heatmap;document.getElementById('ov').src='data:image/png;base64,'+data.overlay;st.innerText='✅ Complete';
+ }catch(e){st.innerText='❌ Error'}finally{btn.disabled=false;btn.innerText='🔍 Analyze Content'}}
+</script>
+</body>
+</html>
